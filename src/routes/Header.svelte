@@ -100,6 +100,14 @@
 						</ul>
 					{/if}
 				</div>
+			{:else}
+				<a
+					href={resolve('/auth')}
+					class="login-link"
+					aria-current={page.url.pathname.startsWith('/auth') ? 'page' : undefined}
+				>
+					Login
+				</a>
 			{/if}
 		</nav>
 	</div>
@@ -207,5 +215,28 @@
 	.dropdown-menu-item a:hover {
 		background-color: rgba(0, 0, 0, 0.05);
 		color: var(--color-theme-1);
+	}
+
+	.login-link {
+		display: flex;
+		height: 3em;
+		align-items: center;
+		padding: 0 0.75rem;
+		color: var(--color-text);
+		font-weight: 700;
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		background: var(--background);
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: color 0.2s linear, background-color 0.2s linear;
+		text-decoration: none;
+	}
+
+	.login-link:hover {
+		color: var(--color-theme-1);
+		background: rgba(255, 255, 255, 0.9);
 	}
 </style>
