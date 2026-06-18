@@ -183,7 +183,7 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 		if (error) {
 			console.error('Failed to fetch daily word:', error.message);
 		} else if (data) {
-			return data as DailyWord;
+			return data as unknown as DailyWord;
 		}
 	}
 
@@ -216,7 +216,7 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 		throw new Error(`Failed to save daily word: ${error.message}`);
 	}
 
-	return data as DailyWord;
+	return data as unknown as DailyWord;
 }
 
 export async function getDailyWordForGame(gameDate = getDateKey()) {
