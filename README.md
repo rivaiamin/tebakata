@@ -28,7 +28,13 @@ Guess traits to uncover clues, then find the target word before your 20 guesses 
 
 ## Daily word generation
 
-A Vercel Cron job calls `/api/cron/generate-daily-word` once per day (`00:05 Asia/Jakarta`).
+- A Vercel Cron job calls `/api/cron/generate-daily-word` once per day (`00:05 Asia/Jakarta`).
+- The server uses `LLM_API_KEY` with an OpenAI-compatible chat-completions endpoint to generate
+  one `target` and 30-50 `traits`.
+- The generated puzzle is upserted into Supabase `daily_words` by `game_date`.
+- `/game` only receives public puzzle metadata. Guesses are checked through `/api/guess`, so the
+  answer and traits are not sent directly to the browser.
+- Players can share score and time from the game result screen.
 
 1. The server uses `LLM_API_KEY` with an OpenAI-compatible chat-completions endpoint to generate one `target` and 30–50 `traits`.
 2. Wikipedia metadata and an optional stock image are fetched and stored alongside the puzzle.
