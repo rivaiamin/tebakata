@@ -3,28 +3,24 @@
 </script>
 
 <svelte:head>
-	<title>About</title>
-	<meta name="description" content="About this app" />
+	<title>About TebaKata</title>
+	<meta name="description" content="Tentang TebaKata, game tebak kata harian." />
 </svelte:head>
 
 <div class="text-column">
-	<h1>About this app</h1>
+	<h1>About TebaKata</h1>
 
 	<p>
-		This is a <a href="https://svelte.dev/docs/kit">SvelteKit</a> app. You can make your own by typing
-		the following into your command line and following the prompts:
-	</p>
-
-	<pre>npx sv create</pre>
-
-	<p>
-		The page you're looking at is purely static HTML, with no client-side interactivity needed.
-		Because of that, we don't need to load any JavaScript. Try viewing the page's source, or opening
-		the devtools network panel and reloading.
+		TebaKata adalah game tebak kata harian. Gunakan tebakan karakteristik untuk membuka
+		petunjuk, lalu cari kata target sebelum kesempatan habis.
 	</p>
 
 	<p>
-		The <a href={resolve('/sverdle')}>Sverdle</a> page illustrates SvelteKit's data loading and form handling.
-		Try using it with JavaScript disabled!
+		Setiap hari ada satu tantangan untuk semua pemain. Setelah selesai, kamu bisa membagikan
+		skor dan waktu penyelesaianmu.
+	</p>
+
+	<p>
+		<a href={resolve('/game')}>Mainkan TebaKata hari ini</a>
 	</p>
 </div>
