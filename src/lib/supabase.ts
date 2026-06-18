@@ -1,8 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
-	throw new Error('Missing Supabase environment variables');
-}
+const supabaseUrl = env.PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+const supabaseKey = env.PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'missing-supabase-publishable-key';
 
-export const supabase = createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createBrowserClient(supabaseUrl, supabaseKey);

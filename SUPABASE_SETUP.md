@@ -22,7 +22,18 @@ Create a `.env` file in the project root:
 PUBLIC_SUPABASE_URL=your_project_url
 PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Daily AI generation (server-only)
+CURSOR_API_KEY=your_openai_compatible_api_key
+CURSOR_API_BASE_URL=https://api.openai.com/v1
+CURSOR_API_MODEL=gpt-4o-mini
+CRON_SECRET=make_this_a_long_random_secret
+DAILY_WORD_TIME_ZONE=Asia/Jakarta
 ```
+
+`CURSOR_API_KEY` is used only from SvelteKit server routes. The implementation expects an
+OpenAI-compatible chat-completions API. If your Cursor setup uses another provider or gateway,
+set `CURSOR_API_BASE_URL` and `CURSOR_API_MODEL` to that provider's values.
 
 ## 4. Run Database Schema
 
@@ -31,10 +42,29 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 3. Run the SQL script
 4. This will create:
    - `submissions` table
+   - `daily_words` table for generated daily puzzles
    - Indexes for performance
    - Row Level Security (RLS) policies
+5. The `daily_words` table intentionally does not expose target/traits to browser clients.
+   The SvelteKit server reads it with `SUPABASE_SERVICE_ROLE_KEY` and checks guesses through
+   `/api/guess`.
 
-## 5. Setup Admin User
+## 5. Configure Vercel Cron
+
+1. Add the same environment variables above in Vercel Project Settings > Environment Variables.
+2. Deploy the app to Vercel. `vercel.json` schedules `/api/cron/generate-daily-word` at
+   `17:05 UTC`, which is `00:05` in `Asia/Jakarta`.
+3. Vercel will send `Authorization: Bearer $CRON_SECRET` when `CRON_SECRET` is configured.
+4. To test manually after deployment, call:
+
+```sh
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://yourdomain.com/api/cron/generate-daily-word
+```
+
+Use `?force=true` only when you intentionally want to replace the existing puzzle for that date.
+
+## 6. Setup Admin User
 
 To make a user an admin:
 
@@ -57,7 +87,7 @@ SET raw_user_meta_data = jsonb_set(
 WHERE email = 'your-admin-email@example.com';
 ```
 
-## 6. Configure Email Settings (Important for Email Confirmation)
+## 7. Configure Email Settings (Important for Email Confirmation)
 
 If users are being created but not receiving confirmation emails, check these settings:
 
@@ -90,18 +120,20 @@ If users are being created but not receiving confirmation emails, check these se
    - Or use the magic link in the Supabase logs/dashboard
    - Or manually confirm users in **Authentication > Users** dashboard
 
-## 7. Test the Setup
+## 8. Test the Setup
 
 1. Start the dev server: `pnpm dev`
 2. Register a new user at `/auth`
 3. Check email for confirmation link (or confirm manually in Supabase dashboard)
 4. Login and submit a word at `/submit`
 5. Login as admin and review at `/admin`
+6. Visit `/game` and make guesses. Results can be shared with score and time.
 
 ## Notes
 
-- The game will fallback to mock data if no approved submissions exist
+- The game will fallback to mock data if daily generation is not configured yet
 - Only approved submissions appear in the game
 - RLS policies ensure users can only see their own pending submissions
+- Daily generated answers stay server-side and are checked via `/api/guess`
 - Admin role is checked via `user_metadata.role`
 - If email confirmation is disabled, users can sign in immediately after registration
