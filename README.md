@@ -1,6 +1,18 @@
-# sv
+# TebaKata
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Daily Indonesian word guessing game built with SvelteKit, Supabase, and Vercel.
+
+## Daily word generation
+
+- Vercel Cron calls `/api/cron/generate-daily-word` once per day.
+- The server uses `CURSOR_API_KEY` with an OpenAI-compatible chat-completions endpoint to generate
+  one `target` and 30-50 `traits`.
+- The generated puzzle is upserted into Supabase `daily_words` by `game_date`.
+- `/game` only receives public puzzle metadata. Guesses are checked through `/api/guess`, so the
+  answer and traits are not sent directly to the browser.
+- Players can share score and time from the game result screen.
+
+See `SUPABASE_SETUP.md` for database schema and Vercel environment setup.
 
 ## Creating a project
 

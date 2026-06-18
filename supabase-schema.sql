@@ -22,6 +22,31 @@ CREATE INDEX IF NOT EXISTS idx_submissions_creator ON submissions(creator_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_target ON submissions(LOWER(target));
 CREATE INDEX IF NOT EXISTS idx_submissions_created_at ON submissions(created_at DESC);
 
+-- Daily generated words table
+-- This table stores the secret target and traits for one public puzzle per date.
+CREATE TABLE IF NOT EXISTS daily_words (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  game_date DATE NOT NULL UNIQUE,
+  target TEXT NOT NULL,
+  traits TEXT[] NOT NULL,
+  creator_name TEXT NOT NULL DEFAULT 'Cursor AI',
+  source TEXT NOT NULL DEFAULT 'cursor',
+  model TEXT,
+  raw_response JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT daily_words_min_traits CHECK (array_length(traits, 1) >= 20),
+  CONSTRAINT daily_words_max_traits CHECK (array_length(traits, 1) <= 50)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_words_game_date ON daily_words(game_date DESC);
+
+ALTER TABLE daily_words ENABLE ROW LEVEL SECURITY;
+
+-- Intentionally no anon/authenticated SELECT policy:
+-- the game reads and checks guesses through SvelteKit server routes using the service role key.
+-- This prevents clients from downloading target/traits directly from Supabase.
+
 -- RLS Policies
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 
