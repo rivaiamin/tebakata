@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { Game } from './game';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ClueBoard from '$lib/components/ClueBoard.svelte';
 
@@ -8,24 +7,37 @@
 
 	const MAX_GUESSES = 20;
 
+	type GuessResponse =
+		| { result: 'target'; target: string }
+		| { result: 'trait'; trait: string }
+		| { result: 'miss' };
+	type WebAudioWindow = Window & { webkitAudioContext?: typeof AudioContext };
+
 	// Game state - matching React implementation
-	let game = $state(new Game(data.target, data.traits));
 	let guesses = $state<string[]>([]);
 	let foundTraits = $state<string[]>([]);
 	let gameState = $state<'playing' | 'won' | 'lost'>('playing');
 	let currentInput = $state('');
+	let isGuessing = $state(false);
 	let startTime = $state(Date.now());
 	let endTime = $state<number | null>(null);
 	let avatarState = $state<'idle' | 'happy' | 'sad' | 'win'>('idle');
 	let avatarMessage = $state('Gue lagi mikir sesuatu nih. Coba tebak karakteristiknya!');
 	let soundEnabled = $state(true);
 
+	let dailyWord = $derived(data.dailyWord);
+
+	function normalizeGuess(value: string) {
+		return value.trim().toLowerCase().replace(/\s+/g, '_');
+	}
+
 	// Sound synthesizer
 	function playSound(type: 'hit' | 'miss' | 'win') {
 		try {
-			const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-			if (!AudioContext) return;
-			const ctx = new AudioContext();
+			const AudioContextConstructor =
+				window.AudioContext || (window as WebAudioWindow).webkitAudioContext;
+			if (!AudioContextConstructor) return;
+			const ctx = new AudioContextConstructor();
 			const osc = ctx.createOscillator();
 			const gain = ctx.createGain();
 			osc.connect(gain);
@@ -52,55 +64,79 @@
 				osc.start(now);
 				osc.stop(now + 0.5);
 			}
-		} catch (e) {
+		} catch {
 			// Ignore errors
 		}
 	}
 
-	function handleGuess(e: SubmitEvent) {
+	async function handleGuess(e: SubmitEvent) {
 		e.preventDefault();
-		if (!currentInput.trim() || gameState !== 'playing') return;
+		if (!currentInput.trim() || gameState !== 'playing' || isGuessing) return;
 
-		const guess = currentInput.trim().toLowerCase();
+		const guess = normalizeGuess(currentInput);
 		if (guesses.includes(guess)) return;
 
-		// Update guesses state directly, matching React implementation
-		const newGuesses = [...guesses, guess];
-		guesses = newGuesses;
-		currentInput = '';
+		isGuessing = true;
 
-		// Check game logic
-		const isTarget = guess === data.target.toLowerCase();
-		const isTrait = data.traits.some((t: string) => t.toLowerCase() === guess);
+		try {
+			const response = await fetch('/api/guess', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					game_date: dailyWord.game_date,
+					guess
+				})
+			});
 
-		if (isTarget) {
-			gameState = 'won';
-			endTime = Date.now();
-			avatarState = 'win';
-			avatarMessage = `YES! Jawabannya ${data.target}!`;
-			if (soundEnabled) playSound('win');
-		} else if (isTrait) {
-			// Update foundTraits state directly, matching React implementation
-			foundTraits = [...foundTraits, guess];
-			avatarState = 'happy';
-			avatarMessage = 'Bener banget! Itu karakteristiknya.';
-			if (soundEnabled) playSound('hit');
-		} else {
+			if (!response.ok) {
+				throw new Error('Guess request failed');
+			}
+
+			const result = (await response.json()) as GuessResponse;
+
+			// Update guesses state directly, matching React implementation
+			const newGuesses = [...guesses, guess];
+			guesses = newGuesses;
+			currentInput = '';
+
+			const isTarget = result.result === 'target';
+
+			if (isTarget) {
+				gameState = 'won';
+				endTime = Date.now();
+				avatarState = 'win';
+				avatarMessage = `YES! Jawabannya ${result.target}!`;
+				if (soundEnabled) playSound('win');
+			} else if (result.result === 'trait') {
+				// Update foundTraits state directly, matching React implementation
+				foundTraits = foundTraits.includes(result.trait) ? foundTraits : [...foundTraits, result.trait];
+				avatarState = 'happy';
+				avatarMessage = 'Bener banget! Itu karakteristiknya.';
+				if (soundEnabled) playSound('hit');
+			} else {
+				avatarState = 'sad';
+				avatarMessage = 'Bukan tuh.';
+				if (soundEnabled) playSound('miss');
+			}
+
+			if (!isTarget && newGuesses.length >= MAX_GUESSES) {
+				gameState = 'lost';
+				endTime = Date.now();
+				avatarMessage = 'Kesempatan habis! Coba lagi besok.';
+			}
+
+			if (gameState === 'playing' && !isTarget) {
+				setTimeout(() => {
+					avatarState = 'idle';
+				}, 1500);
+			}
+		} catch {
 			avatarState = 'sad';
-			avatarMessage = 'Bukan tuh.';
-			if (soundEnabled) playSound('miss');
-		}
-
-		if (!isTarget && newGuesses.length >= MAX_GUESSES) {
-			gameState = 'lost';
-			endTime = Date.now();
-			avatarMessage = `Kesempatan habis! Jawabannya ${data.target}.`;
-		}
-
-		if (gameState === 'playing' && !isTarget) {
-			setTimeout(() => {
-				avatarState = 'idle';
-			}, 1500);
+			avatarMessage = 'Tebakan gagal dikirim. Coba lagi.';
+		} finally {
+			isGuessing = false;
 		}
 	}
 
@@ -116,7 +152,7 @@
 	function shareResult() {
 		const score = gameState === 'won' ? guesses.length : 'X';
 		navigator.clipboard.writeText(
-			`🕵️ TebaKata\nSkor: ${score}/${MAX_GUESSES}\nWaktu: ${getFormattedTime()}\n#TebaKata`
+			`🕵️ TebaKata ${dailyWord.game_date}\nSkor: ${score}/${MAX_GUESSES}\nWaktu: ${getFormattedTime()}\n#TebaKata`
 		);
 		alert('Tersalin!');
 	}
@@ -223,9 +259,9 @@
 
 		<ClueBoard traits={foundTraits} />
 
-		{#if data.creator_name && data.creator_name !== 'System'}
+		{#if dailyWord.creator_name && dailyWord.creator_name !== 'System'}
 			<div class="text-center text-xs text-gray-500">
-				Kata oleh: <span class="font-semibold">{data.creator_name}</span>
+				Kata oleh: <span class="font-semibold">{dailyWord.creator_name}</span>
 			</div>
 		{/if}
 	</main>
@@ -238,12 +274,14 @@
 						type="text"
 						bind:value={currentInput}
 						placeholder="Karakteristik atau kata..."
-						class="flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-all font-medium text-lg"
-						autofocus
+						disabled={isGuessing}
+						class="flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-all font-medium text-lg disabled:opacity-60"
 					/>
 					<button
 						type="submit"
-						class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-colors"
+						disabled={isGuessing || !currentInput.trim()}
+						aria-busy={isGuessing}
+						class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
 						aria-label="Kirim tebakan"
 					>
 						<svg
