@@ -29,11 +29,21 @@ CURSOR_API_BASE_URL=https://api.openai.com/v1
 CURSOR_API_MODEL=gpt-4o-mini
 CRON_SECRET=make_this_a_long_random_secret
 DAILY_WORD_TIME_ZONE=Asia/Jakarta
+
+# Optional stock image provider for the winner reveal
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key
+# or
+PEXELS_API_KEY=your_pexels_api_key
 ```
 
 `CURSOR_API_KEY` is used only from SvelteKit server routes. The implementation expects an
 OpenAI-compatible chat-completions API. If your Cursor setup uses another provider or gateway,
 set `CURSOR_API_BASE_URL` and `CURSOR_API_MODEL` to that provider's values.
+
+Wikipedia summaries are fetched daily from Wikipedia's public API. Stock images are fetched daily
+from Unsplash when `UNSPLASH_ACCESS_KEY` is configured, or Pexels when `PEXELS_API_KEY` is
+configured. If neither stock key is configured, the game still works but only the wiki reveal is
+available.
 
 ## 4. Run Database Schema
 
@@ -47,7 +57,8 @@ set `CURSOR_API_BASE_URL` and `CURSOR_API_MODEL` to that provider's values.
    - Row Level Security (RLS) policies
 5. The `daily_words` table intentionally does not expose target/traits to browser clients.
    The SvelteKit server reads it with `SUPABASE_SERVICE_ROLE_KEY` and checks guesses through
-   `/api/guess`.
+   `/api/guess`. The wiki and image reveal is also returned only by `/api/guess` after the exact
+   daily word is guessed.
 
 ## 5. Configure Vercel Cron
 
