@@ -4,6 +4,23 @@ import { createServerClient } from '$lib/supabase.server';
 const DEFAULT_TIME_ZONE = 'Asia/Jakarta';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const DEFAULT_API_BASE_URL = 'https://api.openai.com/v1';
+const DAILY_WORD_SELECT = [
+	'id',
+	'game_date',
+	'target',
+	'traits',
+	'creator_name',
+	'source',
+	'model',
+	'wiki_title',
+	'wiki_extract',
+	'wiki_url',
+	'image_url',
+	'image_alt',
+	'image_credit',
+	'image_credit_url',
+	'image_source'
+].join(', ');
 
 export interface DailyWord {
 	id: string;
@@ -13,6 +30,14 @@ export interface DailyWord {
 	creator_name: string;
 	source: string;
 	model: string | null;
+	wiki_title: string | null;
+	wiki_extract: string | null;
+	wiki_url: string | null;
+	image_url: string | null;
+	image_alt: string | null;
+	image_credit: string | null;
+	image_credit_url: string | null;
+	image_source: string | null;
 }
 
 interface GeneratedDailyWord {
@@ -25,6 +50,17 @@ interface GeneratedDailyWord {
 interface DailyWordOptions {
 	createIfMissing?: boolean;
 	force?: boolean;
+}
+
+interface DailyWordMedia {
+	wiki_title: string | null;
+	wiki_extract: string | null;
+	wiki_url: string | null;
+	image_url: string | null;
+	image_alt: string | null;
+	image_credit: string | null;
+	image_credit_url: string | null;
+	image_source: string | null;
 }
 
 const fallbackTraits = [
@@ -91,6 +127,28 @@ export function toPublicDailyWord(dailyWord: DailyWord) {
 	};
 }
 
+export function toDailyWordReveal(dailyWord: DailyWord) {
+	return {
+		wiki:
+			dailyWord.wiki_title || dailyWord.wiki_extract || dailyWord.wiki_url
+				? {
+						title: dailyWord.wiki_title,
+						extract: dailyWord.wiki_extract,
+						url: dailyWord.wiki_url
+					}
+				: null,
+		image: dailyWord.image_url
+			? {
+					url: dailyWord.image_url,
+					alt: dailyWord.image_alt || `Gambar ${dailyWord.target.replace(/_/g, ' ')}`,
+					credit: dailyWord.image_credit,
+					credit_url: dailyWord.image_credit_url,
+					source: dailyWord.image_source
+				}
+			: null
+	};
+}
+
 export function getFallbackDailyWord(gameDate = getDateKey()): DailyWord {
 	return {
 		id: `fallback-${gameDate}`,
@@ -99,7 +157,16 @@ export function getFallbackDailyWord(gameDate = getDateKey()): DailyWord {
 		traits: fallbackTraits,
 		creator_name: 'System',
 		source: 'fallback',
-		model: null
+		model: null,
+		wiki_title: 'Unta',
+		wiki_extract:
+			'Unta adalah hewan mamalia berkuku genap yang dikenal dengan punuknya dan kemampuannya bertahan di lingkungan gurun.',
+		wiki_url: 'https://id.wikipedia.org/wiki/Unta',
+		image_url: null,
+		image_alt: null,
+		image_credit: null,
+		image_credit_url: null,
+		image_source: null
 	};
 }
 
@@ -109,14 +176,14 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 	if (!options.force) {
 		const { data, error } = await supabase
 			.from('daily_words')
-			.select('id, game_date, target, traits, creator_name, source, model')
+			.select(DAILY_WORD_SELECT)
 			.eq('game_date', gameDate)
 			.maybeSingle();
 
 		if (error) {
 			console.error('Failed to fetch daily word:', error.message);
 		} else if (data) {
-			return data as DailyWord;
+			return data as unknown as DailyWord;
 		}
 	}
 
@@ -125,6 +192,7 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 	}
 
 	const generated = await generateDailyWord(gameDate);
+	const media = await fetchDailyWordMedia(generated.target);
 	const { data, error } = await supabase
 		.from('daily_words')
 		.upsert(
@@ -136,18 +204,19 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 				source: 'cursor',
 				model: generated.model,
 				raw_response: generated.raw_response,
+				...media,
 				updated_at: new Date().toISOString()
 			},
 			{ onConflict: 'game_date' }
 		)
-		.select('id, game_date, target, traits, creator_name, source, model')
+		.select(DAILY_WORD_SELECT)
 		.single();
 
 	if (error) {
 		throw new Error(`Failed to save daily word: ${error.message}`);
 	}
 
-	return data as DailyWord;
+	return data as unknown as DailyWord;
 }
 
 export async function getDailyWordForGame(gameDate = getDateKey()) {
@@ -167,7 +236,8 @@ export async function checkDailyGuess(gameDate: string, guess: string) {
 	if (normalizedGuess === normalizedTarget) {
 		return {
 			result: 'target' as const,
-			target: dailyWord.target
+			target: dailyWord.target,
+			reveal: toDailyWordReveal(dailyWord)
 		};
 	}
 
@@ -289,4 +359,194 @@ function normalizeTraits(traits: string[], target: string) {
 	}
 
 	return normalized.slice(0, 50);
+}
+
+async function fetchDailyWordMedia(target: string): Promise<DailyWordMedia> {
+	const [wiki, image] = await Promise.all([
+		fetchWikipediaSummary(target).catch((error) => {
+			console.error('Failed to fetch Wikipedia summary:', error);
+			return null;
+		}),
+		fetchStockImage(target).catch((error) => {
+			console.error('Failed to fetch stock image:', error);
+			return null;
+		})
+	]);
+
+	return {
+		wiki_title: wiki?.title ?? null,
+		wiki_extract: wiki?.extract ?? null,
+		wiki_url: wiki?.url ?? null,
+		image_url: image?.url ?? null,
+		image_alt: image?.alt ?? null,
+		image_credit: image?.credit ?? null,
+		image_credit_url: image?.creditUrl ?? null,
+		image_source: image?.source ?? null
+	};
+}
+
+async function fetchWikipediaSummary(target: string) {
+	const query = target.replace(/_/g, ' ');
+
+	for (const language of ['id', 'en']) {
+		const title = await searchWikipediaTitle(language, query);
+		if (!title) continue;
+
+		const response = await fetch(
+			`https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+			{
+				headers: {
+					accept: 'application/json'
+				}
+			}
+		);
+
+		if (!response.ok) continue;
+
+		const summary = (await response.json()) as {
+			title?: unknown;
+			extract?: unknown;
+			content_urls?: { desktop?: { page?: unknown } };
+		};
+		const extract = typeof summary.extract === 'string' ? summary.extract : null;
+		const url =
+			typeof summary.content_urls?.desktop?.page === 'string'
+				? summary.content_urls.desktop.page
+				: null;
+
+		if (extract || url) {
+			return {
+				title: typeof summary.title === 'string' ? summary.title : title,
+				extract,
+				url
+			};
+		}
+	}
+
+	return null;
+}
+
+async function searchWikipediaTitle(language: string, query: string) {
+	const url = new URL(`https://${language}.wikipedia.org/w/api.php`);
+	url.searchParams.set('action', 'query');
+	url.searchParams.set('list', 'search');
+	url.searchParams.set('srsearch', query);
+	url.searchParams.set('format', 'json');
+	url.searchParams.set('origin', '*');
+	url.searchParams.set('srlimit', '1');
+
+	const response = await fetch(url);
+	if (!response.ok) return null;
+
+	const data = (await response.json()) as {
+		query?: { search?: Array<{ title?: unknown }> };
+	};
+	const title = data.query?.search?.[0]?.title;
+
+	return typeof title === 'string' ? title : null;
+}
+
+async function fetchStockImage(target: string) {
+	const query = target.replace(/_/g, ' ');
+
+	if (env.UNSPLASH_ACCESS_KEY) {
+		return fetchUnsplashImage(query, env.UNSPLASH_ACCESS_KEY);
+	}
+
+	if (env.PEXELS_API_KEY) {
+		return fetchPexelsImage(query, env.PEXELS_API_KEY);
+	}
+
+	return null;
+}
+
+async function fetchUnsplashImage(query: string, accessKey: string) {
+	const url = new URL('https://api.unsplash.com/search/photos');
+	url.searchParams.set('query', query);
+	url.searchParams.set('per_page', '1');
+	url.searchParams.set('orientation', 'landscape');
+	url.searchParams.set('content_filter', 'high');
+
+	const response = await fetch(url, {
+		headers: {
+			Authorization: `Client-ID ${accessKey}`,
+			'Accept-Version': 'v1'
+		}
+	});
+
+	if (!response.ok) return null;
+
+	const data = (await response.json()) as {
+		results?: Array<{
+			alt_description?: unknown;
+			description?: unknown;
+			links?: { html?: unknown };
+			urls?: { regular?: unknown };
+			user?: { name?: unknown; links?: { html?: unknown } };
+		}>;
+	};
+	const photo = data.results?.[0];
+	const imageUrl = photo?.urls?.regular;
+
+	if (typeof imageUrl !== 'string') return null;
+
+	return {
+		url: imageUrl,
+		alt:
+			typeof photo?.alt_description === 'string'
+				? photo.alt_description
+				: typeof photo?.description === 'string'
+					? photo.description
+					: query,
+		credit: typeof photo?.user?.name === 'string' ? photo.user.name : 'Unsplash',
+		creditUrl:
+			typeof photo?.user?.links?.html === 'string'
+				? photo.user.links.html
+				: typeof photo?.links?.html === 'string'
+					? photo.links.html
+					: null,
+		source: 'Unsplash'
+	};
+}
+
+async function fetchPexelsImage(query: string, apiKey: string) {
+	const url = new URL('https://api.pexels.com/v1/search');
+	url.searchParams.set('query', query);
+	url.searchParams.set('per_page', '1');
+	url.searchParams.set('orientation', 'landscape');
+
+	const response = await fetch(url, {
+		headers: {
+			Authorization: apiKey
+		}
+	});
+
+	if (!response.ok) return null;
+
+	const data = (await response.json()) as {
+		photos?: Array<{
+			alt?: unknown;
+			photographer?: unknown;
+			photographer_url?: unknown;
+			src?: { large2x?: unknown; large?: unknown; original?: unknown };
+			url?: unknown;
+		}>;
+	};
+	const photo = data.photos?.[0];
+	const imageUrl = photo?.src?.large2x ?? photo?.src?.large ?? photo?.src?.original;
+
+	if (typeof imageUrl !== 'string') return null;
+
+	return {
+		url: imageUrl,
+		alt: typeof photo?.alt === 'string' && photo.alt ? photo.alt : query,
+		credit: typeof photo?.photographer === 'string' ? photo.photographer : 'Pexels',
+		creditUrl:
+			typeof photo?.photographer_url === 'string'
+				? photo.photographer_url
+				: typeof photo?.url === 'string'
+					? photo.url
+					: null,
+		source: 'Pexels'
+	};
 }

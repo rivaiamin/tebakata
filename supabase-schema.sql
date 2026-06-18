@@ -32,12 +32,29 @@ CREATE TABLE IF NOT EXISTS daily_words (
   creator_name TEXT NOT NULL DEFAULT 'Cursor AI',
   source TEXT NOT NULL DEFAULT 'cursor',
   model TEXT,
+  wiki_title TEXT,
+  wiki_extract TEXT,
+  wiki_url TEXT,
+  image_url TEXT,
+  image_alt TEXT,
+  image_credit TEXT,
+  image_credit_url TEXT,
+  image_source TEXT,
   raw_response JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   CONSTRAINT daily_words_min_traits CHECK (array_length(traits, 1) >= 20),
   CONSTRAINT daily_words_max_traits CHECK (array_length(traits, 1) <= 50)
 );
+
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS wiki_title TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS wiki_extract TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS wiki_url TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS image_alt TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS image_credit TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS image_credit_url TEXT;
+ALTER TABLE daily_words ADD COLUMN IF NOT EXISTS image_source TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_daily_words_game_date ON daily_words(game_date DESC);
 
