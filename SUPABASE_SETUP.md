@@ -24,9 +24,9 @@ PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # Daily AI generation (server-only)
-CURSOR_API_KEY=your_openai_compatible_api_key
-CURSOR_API_BASE_URL=https://api.openai.com/v1
-CURSOR_API_MODEL=gpt-4o-mini
+LLM_API_KEY=your_openai_compatible_api_key
+LLM_API_BASE_URL=https://api.openai.com/v1
+LLM_API_MODEL=gpt-4o-mini
 CRON_SECRET=make_this_a_long_random_secret
 DAILY_WORD_TIME_ZONE=Asia/Jakarta
 
@@ -36,9 +36,11 @@ UNSPLASH_ACCESS_KEY=your_unsplash_access_key
 PEXELS_API_KEY=your_pexels_api_key
 ```
 
-`CURSOR_API_KEY` is used only from SvelteKit server routes. The implementation expects an
-OpenAI-compatible chat-completions API. If your Cursor setup uses another provider or gateway,
-set `CURSOR_API_BASE_URL` and `CURSOR_API_MODEL` to that provider's values.
+`LLM_API_KEY` is used only from SvelteKit server routes. The implementation expects an
+OpenAI-compatible chat-completions API. For Gemini, use
+`LLM_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai` and
+`LLM_API_MODEL=gemini-2.5-flash`. For other providers, set `LLM_API_BASE_URL` and
+`LLM_API_MODEL` to that provider's values.
 
 Wikipedia summaries are fetched daily from Wikipedia's public API. Stock images are fetched daily
 from Unsplash when `UNSPLASH_ACCESS_KEY` is configured, or Pexels when `PEXELS_API_KEY` is

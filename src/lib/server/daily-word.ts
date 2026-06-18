@@ -200,8 +200,8 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 				game_date: gameDate,
 				target: generated.target,
 				traits: generated.traits,
-				creator_name: 'Cursor AI',
-				source: 'cursor',
+				creator_name: 'AI',
+				source: 'llm',
 				model: generated.model,
 				raw_response: generated.raw_response,
 				...media,
@@ -255,13 +255,13 @@ export async function checkDailyGuess(gameDate: string, guess: string) {
 }
 
 async function generateDailyWord(gameDate: string): Promise<GeneratedDailyWord> {
-	const apiKey = env.CURSOR_API_KEY;
+	const apiKey = env.LLM_API_KEY;
 	if (!apiKey) {
-		throw new Error('Missing CURSOR_API_KEY');
+		throw new Error('Missing LLM_API_KEY');
 	}
 
-	const model = env.CURSOR_API_MODEL || DEFAULT_MODEL;
-	const baseUrl = (env.CURSOR_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
+	const model = env.LLM_API_MODEL || DEFAULT_MODEL;
+	const baseUrl = (env.LLM_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 	const response = await fetch(`${baseUrl}/chat/completions`, {
 		method: 'POST',
 		headers: {
