@@ -7,8 +7,24 @@
 
 	const MAX_GUESSES = 20;
 
+	type RevealWiki = {
+		title: string | null;
+		extract: string | null;
+		url: string | null;
+	};
+	type RevealImage = {
+		url: string;
+		alt: string;
+		credit: string | null;
+		credit_url: string | null;
+		source: string | null;
+	};
+	type RevealPayload = {
+		wiki: RevealWiki | null;
+		image: RevealImage | null;
+	};
 	type GuessResponse =
-		| { result: 'target'; target: string }
+		| { result: 'target'; target: string; reveal: RevealPayload }
 		| { result: 'trait'; trait: string }
 		| { result: 'miss' };
 	type WebAudioWindow = Window & { webkitAudioContext?: typeof AudioContext };
@@ -24,6 +40,7 @@
 	let avatarState = $state<'idle' | 'happy' | 'sad' | 'win'>('idle');
 	let avatarMessage = $state('Gue lagi mikir sesuatu nih. Coba tebak karakteristiknya!');
 	let soundEnabled = $state(true);
+	let reveal = $state.raw<RevealPayload | null>(null);
 
 	let dailyWord = $derived(data.dailyWord);
 
@@ -104,6 +121,7 @@
 			const isTarget = result.result === 'target';
 
 			if (isTarget) {
+				reveal = result.reveal;
 				gameState = 'won';
 				endTime = Date.now();
 				avatarState = 'win';
@@ -258,6 +276,65 @@
 		</div>
 
 		<ClueBoard traits={foundTraits} />
+
+		{#if gameState === 'won' && reveal}
+			<section class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 space-y-4">
+				<div class="space-y-1">
+					<p class="text-xs font-bold uppercase tracking-wide text-indigo-600">Jawaban Hari Ini</p>
+					<h2 class="text-xl font-bold text-slate-900">Fakta jawaban hari ini</h2>
+				</div>
+
+				{#if reveal.image}
+					<figure class="space-y-2">
+						<img
+							src={reveal.image.url}
+							alt={reveal.image.alt}
+							class="w-full rounded-2xl object-cover border border-slate-200"
+						/>
+						{#if reveal.image.credit || reveal.image.source || reveal.image.credit_url}
+							<figcaption class="text-xs text-slate-500">
+								Foto:
+								{#if reveal.image.credit_url}
+									<a
+										href={reveal.image.credit_url}
+										target="_blank"
+										rel="external noreferrer"
+										class="font-medium text-indigo-600 underline-offset-2 hover:underline"
+									>
+										{reveal.image.credit ?? reveal.image.source ?? 'Sumber gambar'}
+									</a>
+								{:else}
+									<span class="font-medium">
+										{reveal.image.credit ?? reveal.image.source}
+									</span>
+								{/if}
+							</figcaption>
+						{/if}
+					</figure>
+				{/if}
+
+				{#if reveal.wiki}
+					<div class="space-y-2">
+						{#if reveal.wiki.title}
+							<h3 class="text-lg font-bold text-slate-900">{reveal.wiki.title}</h3>
+						{/if}
+						{#if reveal.wiki.extract}
+							<p class="text-sm leading-relaxed text-slate-600">{reveal.wiki.extract}</p>
+						{/if}
+						{#if reveal.wiki.url}
+							<a
+								href={reveal.wiki.url}
+								target="_blank"
+								rel="external noreferrer"
+								class="inline-flex text-sm font-bold text-indigo-600 underline-offset-2 hover:underline"
+							>
+								Baca di Wikipedia
+							</a>
+						{/if}
+					</div>
+				{/if}
+			</section>
+		{/if}
 
 		{#if dailyWord.creator_name && dailyWord.creator_name !== 'System'}
 			<div class="text-center text-xs text-gray-500">
