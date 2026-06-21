@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { user } from '$lib/stores/auth';
 	import { supabase } from '$lib/supabase';
-	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
 	let target = $state('');
@@ -16,7 +17,7 @@
 		// Redirect if not logged in
 		const unsubscribe = user.subscribe((u) => {
 			if (!u) {
-				goto('/auth');
+				goto(resolve('/auth'));
 			}
 		});
 
@@ -108,7 +109,7 @@
 			const creatorName =
 				$user.user_metadata?.username || $user.email?.split('@')[0] || 'Anonymous';
 
-			const { data, error: submitError } = await supabase
+			const { error: submitError } = await supabase
 				.from('submissions')
 				.insert({
 					target: targetWord,
@@ -128,10 +129,10 @@
 			isDuplicate = false;
 
 			setTimeout(() => {
-				goto('/');
+				goto(resolve('/'));
 			}, 2000);
-		} catch (err: any) {
-			error = err.message || 'Gagal submit. Coba lagi.';
+		} catch (err: unknown) {
+			error = err instanceof Error ? err.message : 'Gagal submit. Coba lagi.';
 		} finally {
 			loading = false;
 		}
@@ -218,7 +219,7 @@
 					</p>
 					{#if traitsCount > 0}
 						<div class="mt-2 flex flex-wrap gap-2">
-							{#each traits.slice(0, 10) as trait}
+							{#each traits.slice(0, 10) as trait (trait)}
 								<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
 									{trait}
 								</span>
@@ -242,7 +243,7 @@
 					</button>
 					<button
 						type="button"
-						onclick={() => goto('/')}
+						onclick={() => goto(resolve('/'))}
 						class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 					>
 						Batal

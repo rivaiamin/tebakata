@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { user } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { user } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
 
 	interface Submission {
@@ -23,7 +24,7 @@
 		// Check if user is admin
 		$user.subscribe((u) => {
 			if (!u) {
-				goto('/auth');
+				goto(resolve('/auth'));
 				return;
 			}
 			const role = u.user_metadata?.role;
@@ -44,8 +45,8 @@
 			const response = await fetch(`/api/submissions?status=${filter}`);
 			if (!response.ok) throw new Error('Gagal load submissions');
 			submissions = await response.json();
-		} catch (err: any) {
-			error = err.message || 'Terjadi kesalahan';
+		} catch (err: unknown) {
+			error = err instanceof Error ? err.message : 'Terjadi kesalahan';
 		} finally {
 			loading = false;
 		}
@@ -68,8 +69,8 @@
 
 			// Reload submissions
 			await loadSubmissions();
-		} catch (err: any) {
-			alert(err.message || 'Terjadi kesalahan');
+		} catch (err: unknown) {
+			alert(err instanceof Error ? err.message : 'Terjadi kesalahan');
 		} finally {
 			processingId = null;
 		}
@@ -88,8 +89,8 @@
 			if (!response.ok) throw new Error('Gagal delete submission');
 
 			await loadSubmissions();
-		} catch (err: any) {
-			alert(err.message || 'Terjadi kesalahan');
+		} catch (err: unknown) {
+			alert(err instanceof Error ? err.message : 'Terjadi kesalahan');
 		} finally {
 			processingId = null;
 		}
@@ -108,7 +109,7 @@
 			<div class="flex justify-between items-center mb-6">
 				<h1 class="text-2xl font-bold text-gray-800">Admin Panel</h1>
 				<button
-					onclick={() => goto('/')}
+					onclick={() => goto(resolve('/'))}
 					class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 				>
 					Kembali
@@ -195,7 +196,7 @@
 											{submission.target}
 										</h3>
 										<p class="text-sm text-gray-600">
-											Oleh: {submission.creator_name} •{' '}
+											Oleh: {submission.creator_name} •
 											{new Date(submission.created_at).toLocaleDateString('id-ID')}
 										</p>
 										{#if submission.reviewed_at}
@@ -222,7 +223,7 @@
 										Karakteristik ({submission.traits.length}):
 									</p>
 									<div class="flex flex-wrap gap-2">
-										{#each submission.traits.slice(0, 20) as trait}
+										{#each submission.traits.slice(0, 20) as trait (trait)}
 											<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
 												{trait}
 											</span>

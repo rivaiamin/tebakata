@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { seoForPath, site } from '$lib/site';
-	import { getSiteOrigin, serializeJsonLd } from '$lib/site-url';
+	import { getSiteOrigin } from '$lib/site-url';
 
 	let {
 		title,
@@ -47,7 +47,7 @@
 				}
 			} satisfies Record<string, unknown>)
 	);
-	const jsonLdScript = $derived(serializeJsonLd(jsonLdPayload));
+	const jsonLdContent = $derived(JSON.stringify(jsonLdPayload).replace(/</g, '\\u003c'));
 </script>
 
 <svelte:head>
@@ -76,5 +76,7 @@
 	<meta name="twitter:image" content={ogImageUrl} />
 	<meta name="twitter:image:alt" content="{site.name} — {pageDescription}" />
 
-	{@html jsonLdScript}
+	<svelte:element this={'script'} type="application/ld+json">
+		{jsonLdContent}
+	</svelte:element>
 </svelte:head>

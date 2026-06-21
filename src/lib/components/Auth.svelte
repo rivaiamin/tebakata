@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { supabase } from '../supabase';
 	import { user } from '../stores/auth';
-	import { goto } from '$app/navigation';
 
 	let isLogin = $state(true);
 	let email = $state('');
@@ -26,7 +27,7 @@
 				if (authError) throw authError;
 				if (data.user) {
 					success = 'Login berhasil!';
-					setTimeout(() => goto('/'), 1000);
+					setTimeout(() => goto(resolve('/')), 1000);
 				}
 			} else {
 				const { data, error: authError } = await supabase.auth.signUp({
@@ -48,8 +49,8 @@
 					}, 2000);
 				}
 			}
-		} catch (err: any) {
-			error = err.message || 'Terjadi kesalahan';
+		} catch (err: unknown) {
+			error = err instanceof Error ? err.message : 'Terjadi kesalahan';
 		} finally {
 			loading = false;
 		}
@@ -57,7 +58,7 @@
 
 	async function handleSignOut() {
 		await supabase.auth.signOut();
-		goto('/');
+		goto(resolve('/'));
 	}
 </script>
 

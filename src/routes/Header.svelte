@@ -2,8 +2,6 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { user } from '$lib/stores/auth';
-	import logo from '$lib/images/svelte-logo.svg';
-	import github from '$lib/images/github.svg';
 	import { onMount } from 'svelte';
 
 	let dropdownOpen = $state(false);
