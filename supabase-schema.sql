@@ -83,47 +83,25 @@ CREATE POLICY "Users can view own submissions"
   USING (auth.uid() = creator_id);
 
 -- Policy: Admin can view all submissions
--- Note: This requires setting up a custom claim 'role' = 'admin' in Supabase Auth
+-- Uses JWT user_metadata (set via Dashboard or service role) — do not query auth.users from RLS.
 CREATE POLICY "Admin can view all submissions"
   ON submissions FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND (auth.users.raw_user_meta_data->>'role')::text = 'admin'
-    )
-  );
+  USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 
 -- Policy: Admin can update any submission
 CREATE POLICY "Admin can update submissions"
   ON submissions FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND (auth.users.raw_user_meta_data->>'role')::text = 'admin'
-    )
-  );
+  USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 
 -- Policy: Admin can delete submissions
 CREATE POLICY "Admin can delete submissions"
   ON submissions FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = auth.uid()
-      AND (auth.users.raw_user_meta_data->>'role')::text = 'admin'
-    )
-  );
+  USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 
 -- Function to check if user is admin (helper function)
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM auth.users
-    WHERE auth.users.id = auth.uid()
-    AND (auth.users.raw_user_meta_data->>'role')::text = 'admin'
-  );
+  RETURN (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
