@@ -94,16 +94,16 @@ from the Supabase read/upsert path. Check:
 
 ## 6. Setup Admin User
 
-To make a user an admin:
+TebaKata checks `user_metadata.role === 'admin'` (stored in the `raw_user_meta_data`
+column). After changing metadata, sign out and sign back in so the JWT picks up the
+new role.
 
-1. Go to Authentication > Users
-2. Find the user you want to make admin
-3. Click on the user
-4. Go to "Raw User Meta Data"
-5. Add: `{ "role": "admin" }`
-6. Save
+### Recommended: SQL Editor
 
-Or via SQL:
+The dashboard UI for auth metadata changes often; SQL is the most reliable method.
+
+1. Go to **SQL Editor**
+2. Run (replace the email):
 
 ```sql
 UPDATE auth.users
@@ -114,6 +114,27 @@ SET raw_user_meta_data = jsonb_set(
 )
 WHERE email = 'your-admin-email@example.com';
 ```
+
+3. Verify:
+
+```sql
+SELECT email, raw_user_meta_data ->> 'role' AS role
+FROM auth.users
+WHERE email = 'your-admin-email@example.com';
+```
+
+### Optional: Supabase Dashboard
+
+The old docs called this field **Raw User Meta Data**. The current dashboard uses
+**User metadata** (not App metadata — this app reads `user_metadata.role`).
+
+1. Go to **Authentication → Users**
+2. Click the user's row (not Table Editor) to open the side panel
+3. Find **User metadata** and merge in `"role": "admin"` with any existing keys, e.g.
+   `{ "username": "amin", "role": "admin" }`
+4. Save if an edit control is shown
+
+If you only see read-only metadata with no save button, use the SQL Editor method above.
 
 ## 7. Configure Email Settings (Important for Email Confirmation)
 
