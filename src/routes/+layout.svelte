@@ -1,9 +1,12 @@
 <script lang="ts">
 	import Header from './Header.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import './layout.css';
 
 	let { children } = $props();
 </script>
+
+<Seo />
 
 <div class="app min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col items-center">
 	<Header />

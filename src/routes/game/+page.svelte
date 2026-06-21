@@ -197,11 +197,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>TebaKata</title>
-	<meta name="description" content="Game tebak kata dengan gaya 20 pertanyaan" />
-</svelte:head>
-
 <div class="min-h-screen bg-slate-100 font-sans text-slate-800 flex flex-col items-center">
 	<!-- <header class="w-full bg-white shadow-sm p-4 sticky top-0 z-10">
 		<div class="max-w-md mx-auto flex justify-between items-center">

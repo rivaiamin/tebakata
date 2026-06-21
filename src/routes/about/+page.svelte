@@ -2,11 +2,6 @@
 	import { resolve } from '$app/paths';
 </script>
 
-<svelte:head>
-	<title>About TebaKata</title>
-	<meta name="description" content="Tentang TebaKata, game tebak kata harian." />
-</svelte:head>
-
 <div class="text-column">
 	<h1>About TebaKata</h1>
 

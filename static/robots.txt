@@ -1,3 +1,9 @@
-# allow crawling everything by default
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /auth
+Disallow: /submit
+Disallow: /api/
+
+Sitemap: /sitemap.xml

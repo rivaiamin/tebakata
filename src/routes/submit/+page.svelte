@@ -148,10 +148,6 @@
 	);
 </script>
 
-<svelte:head>
-	<title>Submit Kata - TebaKata</title>
-</svelte:head>
-
 <div class="min-h-screen bg-slate-100 p-4">
 	<div class="max-w-2xl mx-auto">
 		<div class="bg-white rounded-xl shadow-lg p-6 space-y-6">

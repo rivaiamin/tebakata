@@ -77,7 +77,7 @@ After deployment, you can generate today's puzzle manually:
 
 ```sh
 curl -H "Authorization: Bearer $CRON_SECRET" \
-  https://yourdomain.com/api/cron/generate-daily-word
+  https://localhost:5173/api/cron/generate-daily-word
 ```
 
 Add `?force=true` only when you intentionally want to replace the existing puzzle for that date.

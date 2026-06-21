@@ -1,0 +1,25 @@
+{
+	"name": "TebaKata",
+	"short_name": "TebaKata",
+	"description": "Game tebak kata harian ala 20 pertanyaan. Tebak karakteristik, buka petunjuk, temukan kata target.",
+	"start_url": "/game",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f1f5f9",
+	"theme_color": "#4f46e5",
+	"lang": "id",
+	"icons": [
+		{
+			"src": "/favicon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		},
+		{
+			"src": "/icon.svg",
+			"sizes": "180x180",
+			"type": "image/svg+xml",
+			"purpose": "any maskable"
+		}
+	]
+}
