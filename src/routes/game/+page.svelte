@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import type { PageData } from './$types';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ClueBoard from '$lib/components/ClueBoard.svelte';
@@ -41,8 +42,14 @@
 	let avatarMessage = $state('Gue lagi mikir sesuatu nih. Coba tebak karakteristiknya!');
 	let soundEnabled = $state(true);
 	let reveal = $state.raw<RevealPayload | null>(null);
+	let guessInput = $state<HTMLInputElement>();
 
 	let dailyWord = $derived(data.dailyWord);
+
+	async function refocusGuessInput() {
+		await tick();
+		guessInput?.focus();
+	}
 
 	function normalizeGuess(value: string) {
 		return value.trim().toLowerCase().replace(/\s+/g, '_');
@@ -91,7 +98,10 @@
 		if (!currentInput.trim() || gameState !== 'playing' || isGuessing) return;
 
 		const guess = normalizeGuess(currentInput);
-		if (guesses.includes(guess)) return;
+		if (guesses.includes(guess)) {
+			await refocusGuessInput();
+			return;
+		}
 
 		isGuessing = true;
 
@@ -155,6 +165,9 @@
 			avatarMessage = 'Tebakan gagal dikirim. Coba lagi.';
 		} finally {
 			isGuessing = false;
+			if (gameState === 'playing') {
+				await refocusGuessInput();
+			}
 		}
 	}
 
@@ -349,6 +362,7 @@
 				<form onsubmit={handleGuess} class="flex gap-2">
 					<input
 						type="text"
+						bind:this={guessInput}
 						bind:value={currentInput}
 						placeholder="Karakteristik atau kata..."
 						disabled={isGuessing}
