@@ -1,17 +1,20 @@
 import { env } from '$env/dynamic/private';
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDailyWord, getDateKey, toPublicDailyWord } from '$lib/server/daily-word';
+import { getDailyWord, getDateKey, getLlmConfig, toPublicDailyWord } from '$lib/server/daily-word';
 
 const handler: RequestHandler = async (event) => {
 	assertCronAuthorized(event);
 
 	const gameDate = event.url.searchParams.get('date') || getDateKey();
 	const force = event.url.searchParams.get('force') === 'true';
-	const dailyWord = await getDailyWord(gameDate, { createIfMissing: true, force });
+	const dryRun = event.url.searchParams.get('dryRun') === 'true';
+	const dailyWord = await getDailyWord(gameDate, { createIfMissing: true, force, dryRun });
 
 	return json({
 		ok: true,
+		dryRun,
+		llm: getLlmConfig(),
 		dailyWord: toPublicDailyWord(dailyWord)
 	});
 };

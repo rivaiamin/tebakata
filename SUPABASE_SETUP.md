@@ -76,6 +76,21 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 ```
 
 Use `?force=true` only when you intentionally want to replace the existing puzzle for that date.
+Use `?dryRun=true` to test the LLM and media fetch without reading or writing Supabase:
+
+```sh
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  "https://yourdomain.com/api/cron/generate-daily-word?dryRun=true"
+```
+
+If the logs show a Gemini/OpenAI-compatible response with `choices` but the route fails with
+`Failed to save daily word` or `TypeError: fetch failed`, Gemini is already working. That error is
+from the Supabase read/upsert path. Check:
+
+- `PUBLIC_SUPABASE_URL` points to the Supabase project URL, not the SQL pooler URL
+- `SUPABASE_SERVICE_ROLE_KEY` is present in the same environment where cron runs
+- the `daily_words` table and media columns from `supabase-schema.sql` have been applied
+- the deployment/server can reach Supabase over the network
 
 ## 6. Setup Admin User
 

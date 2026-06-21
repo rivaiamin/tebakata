@@ -50,6 +50,7 @@ interface GeneratedDailyWord {
 interface DailyWordOptions {
 	createIfMissing?: boolean;
 	force?: boolean;
+	dryRun?: boolean;
 }
 
 interface DailyWordMedia {
@@ -170,9 +171,32 @@ export function getFallbackDailyWord(gameDate = getDateKey()): DailyWord {
 	};
 }
 
-export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOptions = {}) {
-	const supabase = createServerClient();
+export function getLlmConfig() {
+	return {
+		baseUrl: (env.LLM_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, ''),
+		model: env.LLM_API_MODEL || DEFAULT_MODEL,
+		hasApiKey: Boolean(env.LLM_API_KEY)
+	};
+}
 
+export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOptions = {}) {
+	if (options.dryRun) {
+		const generated = await generateDailyWord(gameDate);
+		const media = await fetchDailyWordMedia(generated.target);
+
+		return {
+			id: `dry-run-${gameDate}`,
+			game_date: gameDate,
+			target: generated.target,
+			traits: generated.traits,
+			creator_name: 'AI',
+			source: 'llm',
+			model: generated.model,
+			...media
+		};
+	}
+
+	const supabase = createServerClient();
 	if (!options.force) {
 		const { data, error } = await supabase
 			.from('daily_words')
@@ -181,7 +205,7 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 			.maybeSingle();
 
 		if (error) {
-			console.error('Failed to fetch daily word:', error.message);
+			throw new Error(`Failed to read daily word from Supabase: ${formatSupabaseError(error)}`);
 		} else if (data) {
 			return data as unknown as DailyWord;
 		}
@@ -193,6 +217,7 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 
 	const generated = await generateDailyWord(gameDate);
 	const media = await fetchDailyWordMedia(generated.target);
+
 	const { data, error } = await supabase
 		.from('daily_words')
 		.upsert(
@@ -213,7 +238,7 @@ export async function getDailyWord(gameDate = getDateKey(), options: DailyWordOp
 		.single();
 
 	if (error) {
-		throw new Error(`Failed to save daily word: ${error.message}`);
+		throw new Error(`Failed to save daily word to Supabase: ${formatSupabaseError(error)}`);
 	}
 
 	return data as unknown as DailyWord;
@@ -260,8 +285,7 @@ async function generateDailyWord(gameDate: string): Promise<GeneratedDailyWord> 
 		throw new Error('Missing LLM_API_KEY');
 	}
 
-	const model = env.LLM_API_MODEL || DEFAULT_MODEL;
-	const baseUrl = (env.LLM_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
+	const { baseUrl, model } = getLlmConfig();
 	const response = await fetch(`${baseUrl}/chat/completions`, {
 		method: 'POST',
 		headers: {
@@ -295,7 +319,9 @@ async function generateDailyWord(gameDate: string): Promise<GeneratedDailyWord> 
 
 	if (!response.ok) {
 		const body = await response.text();
-		throw new Error(`Daily word API request failed (${response.status}): ${body}`);
+		throw new Error(
+			`Daily word API request failed (${response.status}) for ${baseUrl} with model ${model}: ${body}`
+		);
 	}
 
 	const raw = await response.json();
@@ -359,6 +385,44 @@ function normalizeTraits(traits: string[], target: string) {
 	}
 
 	return normalized.slice(0, 50);
+}
+
+function formatSupabaseError(error: unknown) {
+	if (error instanceof Error) {
+		return [
+			error.message,
+			getErrorCauseMessage(error),
+			'Check PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, network access, and that the daily_words schema has been applied.'
+		]
+			.filter(Boolean)
+			.join(' ');
+	}
+
+	if (typeof error === 'object' && error) {
+		const record = error as Record<string, unknown>;
+		return [
+			typeof record.message === 'string' ? record.message : null,
+			typeof record.details === 'string' ? record.details : null,
+			typeof record.hint === 'string' ? record.hint : null,
+			typeof record.code === 'string' ? `code=${record.code}` : null,
+			'Check PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, network access, and that the daily_words schema has been applied.'
+		]
+			.filter(Boolean)
+			.join(' ');
+	}
+
+	return String(error);
+}
+
+function getErrorCauseMessage(error: Error) {
+	const cause = error.cause;
+	if (!cause) return null;
+
+	if (cause instanceof Error) {
+		return `Cause: ${cause.message}`;
+	}
+
+	return `Cause: ${String(cause)}`;
 }
 
 async function fetchDailyWordMedia(target: string): Promise<DailyWordMedia> {
