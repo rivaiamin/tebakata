@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { supabase } from '../supabase';
 	import { user } from '../stores/auth';
@@ -27,7 +28,16 @@
 				if (authError) throw authError;
 				if (data.user) {
 					success = 'Login berhasil!';
-					setTimeout(() => goto(resolve('/')), 1000);
+					const redirect = page.url.searchParams.get('redirect');
+					setTimeout(
+						() =>
+							goto(
+								redirect?.startsWith('/') && !redirect.startsWith('//')
+									? resolve(redirect)
+									: resolve('/')
+							),
+						1000
+					);
 				}
 			} else {
 				const { data, error: authError } = await supabase.auth.signUp({

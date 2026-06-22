@@ -55,12 +55,15 @@ available.
 4. This will create:
    - `submissions` table
    - `daily_words` table for generated daily puzzles
+   - `daily_plays` table to track one completed puzzle per user per day
    - Indexes for performance
    - Row Level Security (RLS) policies
 5. The `daily_words` table intentionally does not expose target/traits to browser clients.
    The SvelteKit server reads it with `SUPABASE_SERVICE_ROLE_KEY` and checks guesses through
    `/api/guess`. The wiki and image reveal is also returned only by `/api/guess` after the exact
    daily word is guessed.
+6. Completed daily puzzles are stored in `daily_plays` (logged-in users) and an httpOnly cookie
+   (all players). Players who already finished today's puzzle are redirected to `/submit`.
 
 ## 5. Configure Vercel Cron
 

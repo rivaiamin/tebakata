@@ -1,8 +1,17 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ClueBoard from '$lib/components/ClueBoard.svelte';
+	import { user } from '$lib/stores/auth';
+	import {
+		persistDailyPlay,
+		readDailyPlayFromStorage,
+		type DailyPlayStatus
+	} from '$lib/daily-play';
 
 	let { data }: { data: PageData } = $props();
 
@@ -43,8 +52,26 @@
 	let soundEnabled = $state(true);
 	let reveal = $state.raw<RevealPayload | null>(null);
 	let guessInput = $state<HTMLInputElement>();
+	let hasPersistedPlay = $state(false);
 
 	let dailyWord = $derived(data.dailyWord);
+
+	onMount(() => {
+		if (readDailyPlayFromStorage(dailyWord.game_date)) {
+			goto($user ? resolve('/submit') : resolve('/auth?redirect=/submit'));
+		}
+	});
+
+	async function saveCompletedPlay(status: DailyPlayStatus, guessCount: number) {
+		if (hasPersistedPlay) return;
+		hasPersistedPlay = true;
+
+		try {
+			await persistDailyPlay(dailyWord.game_date, status, guessCount);
+		} catch {
+			hasPersistedPlay = false;
+		}
+	}
 
 	async function refocusGuessInput() {
 		await tick();
@@ -118,6 +145,11 @@
 			});
 
 			if (!response.ok) {
+				if (response.status === 409) {
+					goto($user ? resolve('/submit') : resolve('/auth?redirect=/submit'));
+					return;
+				}
+
 				throw new Error('Guess request failed');
 			}
 
@@ -155,6 +187,10 @@
 				avatarMessage = 'Kesempatan habis! Coba lagi besok.';
 			}
 
+			if (gameState === 'won' || gameState === 'lost') {
+				void saveCompletedPlay(gameState, newGuesses.length);
+			}
+
 			if (gameState === 'playing' && !isTarget) {
 				setTimeout(() => {
 					avatarState = 'idle';
@@ -188,8 +224,8 @@
 		alert('Tersalin!');
 	}
 
-	function restartGame() {
-		window.location.reload();
+	function goToSubmit() {
+		goto($user ? resolve('/submit') : resolve('/auth?redirect=/submit'));
 	}
 
 	function toggleSound() {
@@ -412,7 +448,7 @@
 						Share Hasil
 					</button>
 					<button
-						onclick={restartGame}
+						onclick={goToSubmit}
 						class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors"
 					>
 						<svg
@@ -426,11 +462,10 @@
 							stroke-linecap="round"
 							stroke-linejoin="round"
 						>
-							<polyline points="23 4 23 10 17 10" />
-							<polyline points="1 20 1 14 7 14" />
-							<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+							<path d="M12 20h9" />
+							<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
 						</svg>
-						Tantangan Selanjutnya
+						Submit Kata Baru
 					</button>
 				</div>
 			{/if}

@@ -60,6 +60,29 @@ CREATE INDEX IF NOT EXISTS idx_daily_words_game_date ON daily_words(game_date DE
 
 ALTER TABLE daily_words ENABLE ROW LEVEL SECURITY;
 
+-- One completed daily puzzle per user per date (won or lost).
+CREATE TABLE IF NOT EXISTS daily_plays (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  game_date DATE NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('won', 'lost')),
+  guess_count INTEGER NOT NULL,
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE (user_id, game_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_plays_user_date ON daily_plays(user_id, game_date DESC);
+
+ALTER TABLE daily_plays ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own daily plays"
+  ON daily_plays FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own daily plays"
+  ON daily_plays FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
 -- Intentionally no anon/authenticated SELECT policy:
 -- the game reads and checks guesses through SvelteKit server routes using the service role key.
 -- This prevents clients from downloading target/traits directly from Supabase.
